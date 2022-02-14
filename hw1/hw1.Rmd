@@ -1,0 +1,54 @@
+---
+title: "Homework 1: Subjective Prior for Grades"
+author: "Srikar Katta"
+date: "2/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Q1. Construct a subjective prior density and explain your choice.
+Average grades $\mathcal{G}$ in this class can range between 0 and 100, but we will consider instead the distribution of $\theta = \frac{\mathcal{G}}{100}$, which has a support of [0,1]. This support coincides with that of a Beta distribution. Based on my experience in other courses, professors design exams such that the average grade for a course is around 75%, the lowest grade is around 50%, and the highest grade is about 100%. I hypothesize that the likelihood of the average grade being less than 60% or over 85% is near-0. After tuning the scaling and shape parameters of the Beta distribution, I believe a Beta(18, 6) distribution is a valid subjective prior for average grades. Additionally, the Beta-Binomial conjugacy simplifies futher0oo
+
+
+
+```{r libraries, message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(bayestestR)
+set.seed(999)
+```
+
+### Q2. Plot this density & provide some summaries
+```{r prior, echo=FALSE, message=FALSE, warning=FALSE, out.height='3in', fig.align='center'}
+avg_grades_sample <- rbeta(300000, shape1 = 18, shape2 = 6, ncp = 0)
+ggplot() +
+  geom_density(aes(x = avg_grades_sample)) +
+  theme_bw() +
+  labs(x = expression(theta),
+       y = NULL,
+       title = 'Prior on Average STAT 8004 Grades') +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        text = element_text(size = 20))
+
+ci_est <- hdi(avg_grades_sample, ci = 0.95, verbose = F)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+tibble(
+  Mean = mean(avg_grades_sample),
+  `25 %tile` = quantile(avg_grades_sample, 0.25),
+  Median = median(avg_grades_sample),
+  `75 %tile` = quantile(avg_grades_sample, 0.75),
+  `95% Credible Interval` = paste0('[', round(ci_est$CI_low, 2), ', ', round(ci_est$CI_high, 2), ']')
+) %>%
+  pander::pander(caption = 'Prior Summary Statistics', type = 'latex')
+```
+
+
+
+
+
