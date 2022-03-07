@@ -1,0 +1,108 @@
+\usepackage{booktabs}
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.3}
+\pgfplotsset{soldot/.style={color=blue,only marks,mark=*}} \pgfplotsset{holdot/.style={color=blue,fill=white,only marks,mark=*}}
+
+% \usepackage{ifthen}
+
+\usepackage{
+% amssymb,
+amsmath,amsfonts,amsthm,eurosym,geometry,ulem,graphicx,caption,color,setspace,sectsty,comment,footmisc,
+caption,
+% natbib,
+pdflscape,
+% subfigure,
+array,hyperref,tikz,
+makeidx,
+algorithm2e,
+dsfont
+}
+\usetikzlibrary{fit}
+\usetikzlibrary{shapes,arrows,backgrounds,fit,positioning}
+
+\usetikzlibrary{matrix}
+
+\usepackage[framemethod=TikZ]{mdframed}
+\hypersetup{linktocpage}
+\hypersetup{colorlinks = true, linkcolor = red, urlcolor = red}
+
+\makeindex
+
+% New environments/commands -------------
+
+% param 1: observed variables
+% param 2: unobserved variables
+% param 3: observed constant
+% param 4: unobserved constant
+\newenvironment{var_table}[4] {
+    \begin{center}
+        \begin{tabular}{c|c|c}
+            & \textbf{Observed} & \textbf{Unobserved} \\
+            \hline
+            \textbf{Variable}   & #1 & #2 \\
+            \textbf{Constant} & #3 & #4
+        \end{tabular}
+    \end{center}
+}
+
+% IID command
+\newcommand{\iid}{\stackrel{\mathrm{iid}}{\sim}}
+
+% argmax command
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+
+% define definition environment -------
+% definition counter
+\newcounter{def}[section]\setcounter{def}{0}
+\renewcommand{\thedef}{\arabic{section}.\arabic{def}}
+\newenvironment{definition_term}[1]{%
+\refstepcounter{def}%
+\mdfsetup{%
+frametitle={%
+\tikz[baseline=(current bounding box.east),outer sep=0pt]
+\node[anchor=east,rectangle,fill=blue!20]
+{\strut Definition~\thedef:~#1};}}%
+\mdfsetup{innertopmargin=10pt,linecolor=blue!20,%
+linewidth=2pt,topline=true,%
+frametitleaboveskip=\dimexpr-\ht\strutbox\relax
+}
+\begin{mdframed}[]\relax%
+% \label{#2}
+\index{#1}
+}{\end{mdframed}}
+
+% define theorem environment -------
+% theorem counter
+\newcounter{thm}[section]\setcounter{thm}{0}
+\renewcommand{\thethm}{\arabic{section}.\arabic{thm}}
+\newenvironment{theorem_term}[1]{%
+\refstepcounter{thm}%
+\mdfsetup{%
+frametitle={%
+\tikz[baseline=(current bounding box.east),outer sep=0pt]
+\node[anchor=east,rectangle,fill=blue!20]
+{\strut Theorem~\thethm:~#1};}}%
+\mdfsetup{innertopmargin=10pt,linecolor=blue!20,%
+linewidth=2pt,topline=true,%
+frametitleaboveskip=\dimexpr-\ht\strutbox\relax
+}
+\begin{mdframed}[]\relax%
+% \label{#2}
+\index{#1}
+}{\end{mdframed}}
+
+
+% Example environment
+% \newcounter{ex}[section]\setcounter{ex}{0}
+% \renewcommand{\theex}{\arabic{section}.\arabic{ex}}
+% \newenvironment{example}[1] {
+%   \refstepcounter{ex}#1
+% }
+
+% Example environment
+\theoremstyle{definition}
+\newtheorem{example}{Example}
+
+\onehalfspacing

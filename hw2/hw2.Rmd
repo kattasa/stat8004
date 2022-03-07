@@ -1,0 +1,360 @@
+---
+title: "STAT 8004: Homework 2"
+author: "Srikar Katta"
+date: "3/6/2022"
+output:
+    pdf_document: 
+      includes:
+        in_header: "../preamble_individual.tex"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libs, message = FALSE, warning = FALSE, include = FALSE}
+library(tidyverse)
+library(latex2exp)
+library(pander)
+library(VGAM)
+library(ggsci)
+theme_set(theme_bw() + 
+            theme(legend.position = 'bottom'))
+
+set.seed(999)
+```
+
+### Q1. Priors: $\mathbb{P}(\theta_A) = \mathbb{P}(\theta_B) = Gamma(2,1)$ Data: $\sum\limits_{i = 1}^{10}Y_i^{A} = 217, \sum\limits_{i = 1}^{10}Y_i^{B} = 66$
+
+For notational convenience, let $\Sigma_A = \sum\limits_{i = 1}^{10}Y_i^{A} = 217$ and $\Sigma_B = \sum\limits_{i = 1}^{10}Y_i^{B} = 66$. Additionally, assume that $Y_i^A \iid Poisson(\theta_A)$ and $Y_i^B \iid Poisson(\theta_B)$.
+
+#### a. What is $\mathbb{P}(\theta_A > \theta_B | \Sigma_A, \Sigma_B)$?
+
+Recall that $\mathbb{P}(\theta_A > \theta_B | \Sigma_A, \Sigma_B)$ is equivalent to
+\begin{equation} \label{eq:q1a1}
+\int_0^\infty \int_0^{\theta_A} \mathbb{P}(\theta_A, \theta_B | \Sigma_A, \Sigma_B) d\theta_B d\theta_A.
+\end{equation}
+Since $\theta_A$ and $\theta_B$ are independent, Equation \ref{eq:q1a1} simplifies to
+
+\begin{equation} \label{eq:q1a2}
+\int_0^\infty \int_0^{\theta_A} \mathbb{P}(\theta_A| \Sigma_B) \mathbb{P}(\theta_B | \Sigma_B) d\theta_B d\theta_A.
+\end{equation}
+
+Because $\theta_A, \theta_B \sim Gamma(2,1)$, and the Gamma is a conjugate prior with the Poisson likelihood, we have the following posteriors:
+\begin{align*}
+\mathbb{P}(\theta_A | \Sigma_A) &= Gamma(2 + \Sigma_A, 1 + 10) = Gamma(219, 11) \\
+\mathbb{P}(\theta_B | \Sigma_B) &= Gamma(2 + \Sigma_B, 1 + 10) = Gamma(68, 11).
+\end{align*}
+
+So, we finally have the following equality:
+\begin{equation} \label{eq:q1a3}
+\mathbb{P}(\theta_A > \theta_B | \Sigma_A, \Sigma_B) = \int_0^\infty \int_0^{\theta_A} Gamma(219, 11) Gamma(68, 11) d\theta_B d\theta_A.
+\end{equation}
+
+Unfortunately, we cannot compute Equation \ref{eq:q1a3} analytically and therefore must rely on Monte Carlo simulations: $\mathbb{P}(\theta_A > \theta_B | \Sigma_A, \Sigma_B) = 0$ for all sample sizes between 100 and 100000 (see Figure \ref{fig:q1}).
+
+```{r}
+q1a_fn <- function(n) {
+  # goal: run monte carlo sims to estimate P(theta_a > theta_b | Y_A, Y_B)
+  # inputs
+    # n: numeric w/ number of monte carlo simulations
+  # returns
+    # numeric with proportion of simulated theta_a > theta_b
+
+  theta_a <- rgamma(n = n, shape = 219, rate = 11)
+  theta_b <- rgamma(n = n, shape = 68, rate = 11)
+
+  prop <- sum(theta_a > theta_b) / n
+
+  return(prop)
+}
+```
+
+#### b. What is $\mathbb{P}(\tilde{Y}_A > \tilde{Y}_B| \Sigma_A,\Sigma_B)$, given the known posterior predictive distribution?
+
+Following the same mathematical steps as part a, we can show that
+\begin{equation}
+\mathbb{P}(\tilde{Y}_A > \tilde{Y}_B| \Sigma_A,\Sigma_B) = \int_0^\infty \int_0^{\tilde{Y}_A} \mathbb{P}(\tilde{Y}_A | \Sigma_A)\mathbb{P}(\tilde{Y}_B | \Sigma_B) d\tilde{Y}_Bd\tilde{Y}_A.
+\end{equation}
+
+Notice that $\mathbb{P}(\tilde{Y}_A | \Sigma_A)$ and $\mathbb{P}(\tilde{Y}_B | \Sigma_B)$ are the posterior predictive distributions. When we have a $\theta \sim Gamma(\alpha, \beta)$ prior and $Y \iid Poisson(\theta)$ likelihood, the posterior predictive is $NegBin\left(\frac{n + \beta}{n + \beta + 1}, \sum\limits_{i = 1}^n Y_i + \alpha\right)$, where $n$ is the number of observations. Then,
+\begin{align}
+\mathbb{P}(\tilde{Y}_A | \Sigma_A) &= NegBin\left(\frac{10 + 1}{10 + 1 + 1}, \Sigma_A + 2\right) = NegBin\left(\frac{11}{12}, 219\right) \\
+\mathbb{P}(\tilde{Y}_B | \Sigma_B) &= NegBin\left(\frac{10 + 1}{10 + 1 + 1}, \Sigma_B + 2\right) = NegBin\left(\frac{11}{12}, 68\right).
+\end{align}
+
+```{r}
+q1b_fn <- function(n) {
+  # goal: run monte carlo sims to estimate P(Y_tilde_a > Y_tilde_b | Y_A, Y_B)
+  # inputs
+    # n: numeric w/ number of monte carlo simulations
+  # returns
+    # numeric with proportion of simulated Y_tilde_a > Y_tilde_b
+
+  y_tilde_a <- rnbinom(n = n, size = 219, p = 11/12)
+  y_tilde_b <- rnbinom(n = n, size = 68, p = 11/12)
+
+  prop <- sum(y_tilde_a > y_tilde_b) / n
+
+  return(prop)
+
+}
+```
+
+#### c. What is $\mathbb{P}(\tilde{Y}_A > \tilde{Y}_B| \Sigma_A,\Sigma_B)$ when the posterior predictive distribution is unknown?
+
+If we could not identify the posterior predictive distribution's analytic form, then we would need to utilize a sampling algorithm. First, let us expand expand $\mathbb{P}(\tilde{Y} | \sum Y)$ for the Poisson-Gamma likelihood-prior combination.
+
+\begin{align*}
+\mathbb{P}(\tilde{Y} | \sum Y) &= \int_\Theta \mathbb{P}(\tilde{Y}, \theta | \sum Y) d\theta \\
+&= \int_\Theta \mathbb{P}(\tilde{Y} | \theta) \mathbb{P}(\theta | \sum Y) d\theta \\
+&= \int_0^\infty Poisson(\tilde{Y}; \theta) Gamma\left(\theta | \sum Y; \alpha, \beta\right) d\theta.
+\end{align*}
+
+We can utilize the following Monte Carlo algorithm:
+\begin{enumerate}
+\item For $i = 1, \ldots, N$
+\begin{enumerate}
+  \item $\theta_{A_i} \sim Gamma(219, 11)$ and $\theta_{B_i} \sim Gamma(68, 11)$
+  \item $\tilde{Y}_{A_i} \sim Poisson(\theta_{A_i})$ and $\tilde{Y}_{B_i} \sim Poisson(\theta_{B_i})$
+\end{enumerate}
+\item Compare $(\tilde{Y}_{A_1}, \ldots, \tilde{Y}_{A_N})$ with $(\tilde{Y}_{B_1}, \ldots, \tilde{Y}_{B_N})$ to approximate $\mathbb{P}(\tilde{Y}_A > \tilde{Y}_B | \Sigma_A, \Sigma_B)$
+\end{enumerate}
+
+
+```{r}
+q1c_fn <- function(n) {
+  # goal: run monte carlo sims to estimate P(Y_tilde_a > Y_tilde_b | Y_A, Y_B): post pred unknown
+  # inputs
+    # n: numeric w/ number of monte carlo simulations
+  # returns
+    # numeric with proportion of simulated Y_tilde_a > Y_tilde_b
+
+  theta_a <- rgamma(n = n, shape = 219, rate = 11)
+  theta_b <- rgamma(n = n, shape = 68, rate = 11)
+
+  y_tilde_a <- sapply(theta_a, function(lambda) rpois(n = 1, lambda = lambda))
+  y_tilde_b <- sapply(theta_b, function(lambda) rpois(n = 1, lambda = lambda))
+
+  prop <- sum(y_tilde_a > y_tilde_b) / n
+
+  return(prop)
+}
+```
+
+
+
+```{r, fig.align='center', fig.cap='Q1 plots \\label{fig:q1}', fig.height=4, fig.width=6, echo=FALSE}
+
+q1_df <- tibble(
+  n = c(10, 100, 1000, 10000, 100000)
+) %>%
+  mutate(part_a = sapply(n, q1a_fn),
+         part_b = sapply(n, q1b_fn),
+         part_c = sapply(n, q1c_fn)) %>%
+  pivot_longer(cols = contains('part_'))
+
+
+ggplot(q1_df) +
+  geom_col(aes(x = factor(n), y = value, fill = name), position = 'dodge') +
+  labs(x = 'Sample Size',
+       title = NULL,
+       y = NULL,
+       fill = 'Proportion type') +
+  scale_fill_discrete(labels = c('part_a' = unname(TeX('$P(\\theta_A > \\theta_B | \\Sigma_A, \\Sigma_B)$')),
+                                 'part_b' = unname(TeX('$P(\\tilde{Y}_A > \\tilde{Y}_B | \\Sigma_A, \\Sigma_B)$')),
+                                 'part_c' = unname(TeX('$P(\\tilde{Y}_A > \\tilde{Y}_B | \\Sigma_A, \\Sigma_B)$: unknown'))))
+
+```
+
+
+### Q2
+#### a. Sample 10,000 samples from a standard normal distribution truncated at [0,1]
+##### 1) Use accept-reject algorithm and report the mean, variance, median, and time to completion. Report the acceptance rate.
+
+Because `R`'s for/while-loops require significant overhead time/space, I will sample 10,000 values from the standard normal distribution using `R`'s vectorized sampling functions until I have a sample of 10,000.
+```{r}
+q2a1_fn <- function() {
+  # goal: run simulation using accept-reject algorithm to find 10,000 samples from Normal(0,1) truncated between [0,1]
+  # inputs
+  # returns
+    # table with mean, variance, median, acceptance rate, and completion time of process
+
+  n <- 0
+
+  samples_0_1 <- c()
+  start <- Sys.time()
+  while(length(samples_0_1) < 10000) {
+    samples <- rnorm(n = 10000, mean = 0, sd = 1)
+    samples_0_1 <- c(samples_0_1, samples[(0 <= samples & samples <= 1)])
+    n <- n + 10000
+  }
+
+  end <- Sys.time()
+  stats <- tibble(Mean = mean(samples_0_1),
+                  Variance = var(samples_0_1),
+                  Median = median(samples_0_1),
+                  `Acceptance Rate (%)` = length(samples_0_1)/n * 100,
+                  `Completion time (sec)` = as.numeric(end - start))
+  return(stats)
+}
+
+q2a1_fn() %>%
+  pander::pander(round = 3, caption = 'Question 2, part a.1 results')
+```
+
+##### 2) Use method of inversion and report the mean, variance, median, and time to completion.
+
+Let $X$ be a random variable with density equivalent to the standard Normal distribution truncated on $[0,1]$. Then,
+
+\begin{equation} \label{eq:normal_propto}
+f_X(x) \propto \frac{1}{\sqrt{2\pi}}exp\left(-\frac{1}{2}x^2\right), 0 \leq x \leq 1.
+\end{equation}
+We can find the normalizing constant by dividing  integrating over the support of Equation \ref{eq:normal_propto},
+
+\begin{align*}
+\int_0^1 \frac{1}{\sqrt{2\pi}}exp\left(-\frac{1}{2}x^2\right) dx &= \int_{-\infty}^1 \frac{1}{\sqrt{2\pi}}exp\left(-\frac{1}{2}x^2\right) dx - \int_{-\infty}^0 \frac{1}{\sqrt{2\pi}}exp\left(-\frac{1}{2}x^2\right) dx,
+\end{align*}
+which is the same as $\Phi(1) - \Phi(0),$ where $\Phi$ represents the CDF of the standard Normal. Therefore,
+\begin{equation}
+f_X(x) = \frac{1}{\Phi(1) - \Phi(0)}\left(\frac{1}{\sqrt{2\pi}}exp\left(-\frac{1}{2}x^2\right)\right).
+\end{equation}
+Now, we need to find the cumulative distribution function of $X$,
+\begin{align}
+F_X(x) &= \int_0^x f_X(s) ds \\
+       &= \int_0^x \frac{1}{\Phi(1) - \Phi(0)}\left(\frac{1}{\sqrt{2\pi}}esp\left(-\frac{1}{2}s^2\right)\right) ds \\
+       &= \frac{1}{\Phi(1) - \Phi(0)} \int_0^x \left(\frac{1}{\sqrt{2\pi}}esp\left(-\frac{1}{2}s^2\right)\right) ds \\
+       &= \frac{\Phi(x) - \Phi(0)}{\Phi(1) - \Phi(0)}.
+\end{align}
+
+In order to implement the method of inversion, we need to find a function $F^{-1}: [0,1] \to [0,1]$ such that $F^{-1}(F_X(x)) = x.$ I claim that $F^{-1}(x) = \Phi^{-1}\left((\Phi(1) - \Phi(0))x + \Phi(0)\right),$ where $\Phi^{-1}$ represents the inverse CDF of the standard normal distribution.
+
+Notice,
+\begin{align*}
+F^{-1}(F_X(x)) &= \Phi^{-1}\left((\Phi(1) - \Phi(0))F_X(x) + \Phi(0)\right) \\
+               &= \Phi^{-1}\left((\Phi(1) - \Phi(0))\frac{\Phi(x) - \Phi(0)}{\Phi(1) - \Phi(0)} + \Phi(0)\right) \\
+               &= \Phi^{-1}\left(\Phi(x) - \Phi(0) + \Phi(0)\right) \\
+               &= \Phi^{-1}\left(\Phi(x)\right) \\
+               &= x,
+\end{align*}
+our desired result. We can further simplify $F^{-1}(x)$ by recalling that $\Phi(0) = \frac{1}{2},$ so
+\begin{equation} \label{eq:inverse_cdf}
+F^{-1}(x) = \frac{\Phi(x) - 0.5}{\Phi(1) - 0.5}.
+\end{equation}
+
+We can then utilize Equation \ref{eq:inverse_cdf} in our Method of Inversion algorithm.
+```{r, echo=1:20}
+q2a2_fn <- function() {
+  # goal: utilize method of inversion to obtain 10,000 samples from truncated normal dist
+  # inputs:
+  # returns
+    # table with mean, variance, median, acceptance rate, and completion time of process
+
+  # helper function to compute inverse of uniform samples
+  inverse_cdf <- function(u) {
+    return((pnorm(u) - 1/2)/(pnorm(1) - 1/2))
+  }
+  start <- Sys.time()
+  unif_samples <- runif(n = 10000, min = 0, max = 1)
+  samples_0_1 <- sapply(unif_samples, inverse_cdf)
+  end <- Sys.time()
+
+  stats <- tibble(Mean = mean(samples_0_1),
+                  Variance = var(samples_0_1),
+                  Median = median(samples_0_1),
+                  `Completion time (sec)` = as.numeric(end - start))
+  return(stats)
+}
+
+q2a2_fn() %>%
+  pander::pander(round = 3, caption = 'Question 2, part a.2 results')
+```
+
+#### b. Use the standard normal distribution (for samples 100000) as an envelope to obtain samples from the Laplace(0,1) distribution (rejection sampling). Plot the empirical and theoretical distribution of the Laplace, and the rejection rate.
+
+In our rejection sampling algorithm, we need to decide on a hyperparameter $M$ that scales the envelope distribution such $f_X(x) \leq Mg_X(x)$, where $f_X$ is the distribution of interest and $g_X$ is the proposed envelope distribution. I propose using $M^* = 1.5$ as the scaling factor since the Laplace(0,1) and standard Normal distributions are fairly similar.
+
+```{r}
+q2b_fn <- function(M) {
+  # goal: use rejection sampling to sample from Laplace distribution
+  # inputs:
+    # M: numeric scaling factor btw [1, infty) 
+  # outputs:
+    # table with simulation results
+  # helper function to calculate density of Laplace
+  laplace_prob_calc <- function(x) {
+    return((1/2) * exp(-abs(x)))
+  }
+  
+  tibble(
+    Simulated = rnorm(n = 100000, mean = 0, sd = 1),
+    unif_samples = runif(n = 100000, min = 0, max = 1),
+    Real = VGAM::rlaplace(n = 100000, location = 0, scale = 1)
+  ) %>%
+    mutate(norm_probs = dnorm(Simulated, mean = 0, sd = 1),
+           laplace_probs = sapply(Simulated, laplace_prob_calc)) %>%
+    pivot_longer(cols = c('Simulated', 'Real'), names_to = 'dist', values_to = 'sample') %>%
+    filter((dist == 'Real') | (unif_samples <= laplace_probs/(norm_probs * M))) %>%
+    return()
+}
+
+q2b_tbl <- q2b_fn(1.5)
+q2b_rej <- 100 - sum(q2b_tbl$dist == 'Simulated')/100000 * 100
+ggplot(q2b_tbl) +
+  geom_density(aes(x = sample, color = dist)) +
+  # geom_label(aes(x = 10, y = 0.4), label = paste0('Rejection rate: ', round(q2b_rej, 3))) +
+  labs(x = TeX('$X$'),
+       y = 'Laplace(0,1)',
+       caption = paste0('Rejection rate: ', round(q2b_rej, 3)),
+       color = 'Distribution type')
+
+```
+
+
+#### Sample from a standard normal distribution (for samples 10, 100, 1000, 10000, 100000) to obtain the mean of a standard Gumbel distribution (importance sampling). Plot the two distributions, the importance weights, and the mean over the # of samples.
+
+
+```{r, message=FALSE, warning=FALSE}
+q2c_fn <- function(n) {
+  # goal: find mean of gumbel(0,1) via importance sampling
+  # inputs:
+    # n: numeric representing sampling size
+  # returns
+    # table with simulation results
+  dgumbel <- function(x) {
+    exp(-(x + exp(-x))) %>% return()
+  }
+  tibble(
+    norm_samples = rnorm(n = n, mean = 0, sd = 1),
+    n_samples = n,
+  ) %>%
+    mutate(norm_probs = dnorm(norm_samples, mean = 0, sd = 1),
+           gumbel_probs = dgumbel(norm_samples),
+           imp_weight = gumbel_probs/norm_probs,
+           gumbel_mean = sum(imp_weight * norm_samples)/n,
+           gumbel_samples = VGAM::rgumbel(n = n, location = 0, scale = 1)
+           ) %>%
+    return()
+}
+
+q2c_tbl <- lapply(c(10, 100, 1000, 10000, 100000), q2c_fn) %>%
+  bind_rows()
+```
+
+```{r echo=FALSE, fig.cap='Gumbel vs Normal distributions', message=FALSE, warning=FALSE, fig.width = 3.5}
+ggplot(q2c_tbl) +
+  geom_density(aes(x = norm_samples, color = 'Normal(0,1)')) +
+  geom_density(aes(x = gumbel_samples, color = 'Gumbel(0,1)')) +
+  geom_vline(aes(xintercept = gumbel_mean, linetype = 'Gumbel mean'), linetype = 'dashed') +
+  facet_wrap(~n_samples) +
+  labs(color = 'Distribution',
+       x = 'Samples',
+       y = 'Density')
+
+ggplot(q2c_tbl) +
+  geom_point(aes(x = norm_samples, y = imp_weight)) +
+  facet_wrap(~n_samples) +
+  labs(x = 'Samples',
+       y = 'Importance Weight')
+
+```
